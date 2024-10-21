@@ -142,23 +142,56 @@ void applyGaussianBlur(const cv::Mat& grayImage, cv::Mat& gaussianBlurImage) {
 }
 
 void nonMaximumSuppression(const cv::Mat& sobelImage, cv::Mat& nmsImage) {
+    // Calculate gradients for direction
+    cv::Mat gradX, gradY;
+    cv::Sobel(sobelImage, gradX, CV_32F, 1, 0, 3);
+    cv::Sobel(sobelImage, gradY, CV_32F, 0, 1, 3);
+
     #pragma omp parallel for collapse(2) schedule(dynamic, 16)
     for (int i = 1; i < sobelImage.rows - 1; i++) {
         for (int j = 1; j < sobelImage.cols - 1; j++) {
-            bool isMax = true;
-            const uchar centerPixel = sobelImage.at<uchar>(i, j);
+            float gx = gradX.at<float>(i, j);
+            float gy = gradY.at<float>(i, j);
             
-            // Check 8-connected neighborhood
-            for (int x = -1; x <= 1 && isMax; x++) {
-                for (int y = -1; y <= 1 && isMax; y++) {
-                    if (x == 0 && y == 0) continue;
-                    if (centerPixel <= sobelImage.at<uchar>(i+x, j+y)) {
-                        isMax = false;
-                    }
-                }
+            // Calculate gradient direction
+            float angle = std::atan2(gy, gx) * 180.0 / CV_PI;
+            // Normalize angle to positive values
+            if (angle < 0) angle += 180;
+            
+            // Get the current pixel value
+            int pixel = sobelImage.at<uchar>(i, j);
+            
+            // Initialize neighbors for interpolation
+            float pixel1, pixel2;
+            
+            // Round angle to nearest 45 degrees and get corresponding neighbors
+            if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180)) {
+                // Horizontal direction
+                pixel1 = sobelImage.at<uchar>(i, j+1);
+                pixel2 = sobelImage.at<uchar>(i, j-1);
+            }
+            else if (angle >= 22.5 && angle < 67.5) {
+                // Diagonal direction (/)
+                pixel1 = sobelImage.at<uchar>(i+1, j-1);
+                pixel2 = sobelImage.at<uchar>(i-1, j+1);
+            }
+            else if (angle >= 67.5 && angle < 112.5) {
+                // Vertical direction
+                pixel1 = sobelImage.at<uchar>(i+1, j);
+                pixel2 = sobelImage.at<uchar>(i-1, j);
+            }
+            else if (angle >= 112.5 && angle < 157.5) {
+                // Diagonal direction (\)
+                pixel1 = sobelImage.at<uchar>(i-1, j-1);
+                pixel2 = sobelImage.at<uchar>(i+1, j+1);
             }
             
-            nmsImage.at<uchar>(i, j) = isMax ? centerPixel : 0;
+            // Perform non-maximum suppression
+            if (pixel >= pixel1 && pixel >= pixel2) {
+                nmsImage.at<uchar>(i, j) = pixel;
+            } else {
+                nmsImage.at<uchar>(i, j) = 0;
+            }
         }
     }
 }
@@ -177,8 +210,8 @@ void doubleThreshold(const cv::Mat& sobelImage, cv::Mat& dtImage) {
 }
 
 void edgeTracking(const cv::Mat& dtImage, cv::Mat& etImage) {
-    static const uchar lowThreshold = 30;
-    static const uchar highThreshold = 60;
+    static const uchar lowThreshold = 50;
+    static const uchar highThreshold = 125;
 
     // First pass: mark strong edges
     #pragma omp parallel for collapse(2) schedule(static)

@@ -5,9 +5,9 @@
 #include <omp.h>
 
 int main() {
-
+    omp_set_num_threads(omp_get_max_threads());
     // load the image
-    cv::Mat image = cv::imread("./image/room.jpg");
+    cv::Mat image = cv::imread("./image/image.jpg");
     if (image.empty()) {
         std::cerr << "There is no such image in the directory" << std::endl;
         return -1;
@@ -36,15 +36,15 @@ int main() {
     // cv::Mat cannyImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applyCanny(blurredImage, cannyImage);
 
-    // // create a black image with the size of grayImage and apply non-maximum suppression
-    // cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    // nonMaximumSuppression(sobelImage, nmsImage);
+    // create a black image with the size of grayImage and apply non-maximum suppression
+    cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    nonMaximumSuppression(sobelImage, nmsImage);
 
     // // create a black image with the size of grayImage and apply double threshold
     // cv::Mat dtImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // doubleThreshold(nmsImage, dtImage);
     
-    // // create a black image with the size of grayImage and apply edge tracking
+    // create a black image with the size of grayImage and apply edge tracking
     // cv::Mat etImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // edgeTracking(nmsImage, etImage);
 
@@ -62,7 +62,7 @@ int main() {
 
     // Display the image
     cv::namedWindow(window_name, cv::WINDOW_NORMAL);
-    cv::imshow(window_name, sobelImage);
+    cv::imshow(window_name, nmsImage);
 
     // wait for key press indefinitely
     cv::waitKey(0);
