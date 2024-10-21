@@ -2,6 +2,7 @@
 #include <iostream>
 #include "image_processing.h"
 #include "opencv2/core.hpp"
+#include <omp.h>
 
 int main() {
 
@@ -20,6 +21,9 @@ int main() {
     // cv::Mat laplacianImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applyLaplacian(grayImage, laplacianImage);
 
+    double itime, ftime, exec_time;
+    itime = omp_get_wtime();
+
     // create a black image with the size of grayImage and apply Gaussian blur
     cv::Mat blurredImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     applyGaussianBlur(grayImage, blurredImage);
@@ -32,31 +36,33 @@ int main() {
     // cv::Mat cannyImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applyCanny(blurredImage, cannyImage);
 
-    // create a black image with the size of grayImage and apply non-maximum suppression
-    cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    nonMaximumSuppression(sobelImage, nmsImage);
+    // // create a black image with the size of grayImage and apply non-maximum suppression
+    // cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    // nonMaximumSuppression(sobelImage, nmsImage);
 
     // // create a black image with the size of grayImage and apply double threshold
     // cv::Mat dtImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // doubleThreshold(nmsImage, dtImage);
     
-    // create a black image with the size of grayImage and apply edge tracking
-    cv::Mat etImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    edgeTracking(nmsImage, etImage);
+    // // create a black image with the size of grayImage and apply edge tracking
+    // cv::Mat etImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    // edgeTracking(nmsImage, etImage);
 
     // // create a black image with the size of grayImage and apply Sobel filter then double threshold
     // cv::Mat sobelImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applySobel(grayImage, sobelImage);
     // doubleThreshold(sobelImage, sobelImage);
 
-
+    ftime = omp_get_wtime();
+    exec_time = ftime - itime;
+    printf("\n\nTime taken is %f", exec_time);
 
     // Set the display window name
     std::string window_name = "test display";
 
     // Display the image
     cv::namedWindow(window_name, cv::WINDOW_NORMAL);
-    cv::imshow(window_name, etImage);
+    cv::imshow(window_name, sobelImage);
 
     // wait for key press indefinitely
     cv::waitKey(0);

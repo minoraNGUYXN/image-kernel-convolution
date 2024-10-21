@@ -2,192 +2,217 @@
 #define IMAGE_PROCESSING_H
 
 #include <opencv2/opencv.hpp>
+#include <omp.h>
 
-void applySobel(const cv::Mat grayImage, cv::Mat sobelImage) {
-    int kernelX[3][3] = {
+// Utility function to clamp values between 0 and 255
+inline int clamp(int value) {
+    return value > 255 ? 255 : (value < 0 ? 0 : value);
+}
+
+void applySobel(const cv::Mat& grayImage, cv::Mat& sobelImage) {
+    static const int kernelX[3][3] = {
         {-1, -2, -1},
         {0, 0, 0},
         {1, 2, 1}
     };
 
-    int kernelY[3][3] = {
-        {-1, 0 , 1},
+    static const int kernelY[3][3] = {
+        {-1, 0, 1},
         {-2, 0, 2},
         {-1, 0, 1}
     };
 
-    int i, j, kx, ky;
-    for (i = 1; i < grayImage.rows - 1; i++) {
-        for (j = 1; j < grayImage.cols - 1; j++) {
-            int gx = 0;
-            int gy = 0;
-            for (kx = -1; kx < 2; kx++) {
-                for (ky = -1; ky < 2; ky++) {
-                    gx += grayImage.at<uchar>(i + kx, j + ky) * kernelX[kx + 1][ky + 1];
-                    gy += grayImage.at<uchar>(i + kx, j + ky) * kernelY[kx + 1][ky + 1];
-                }
-            }
-            int G = std::sqrt(gx * gx + gy * gy);
-            G = G > 255 ? 255 : G;
-            sobelImage.at<uchar>(i, j) = G;
+    #pragma omp parallel for collapse(2) schedule(dynamic, 16)
+    for (int i = 1; i < grayImage.rows - 1; i++) {
+        for (int j = 1; j < grayImage.cols - 1; j++) {
+            int gx = 0, gy = 0;
+            
+            // Unroll the inner loops for better performance
+            // Row 1
+            gx += grayImage.at<uchar>(i-1, j-1) * kernelX[0][0];
+            gy += grayImage.at<uchar>(i-1, j-1) * kernelY[0][0];
+            gx += grayImage.at<uchar>(i-1, j) * kernelX[0][1];
+            gy += grayImage.at<uchar>(i-1, j) * kernelY[0][1];
+            gx += grayImage.at<uchar>(i-1, j+1) * kernelX[0][2];
+            gy += grayImage.at<uchar>(i-1, j+1) * kernelY[0][2];
+            
+            // Row 2
+            gx += grayImage.at<uchar>(i, j-1) * kernelX[1][0];
+            gy += grayImage.at<uchar>(i, j-1) * kernelY[1][0];
+            gx += grayImage.at<uchar>(i, j) * kernelX[1][1];
+            gy += grayImage.at<uchar>(i, j) * kernelY[1][1];
+            gx += grayImage.at<uchar>(i, j+1) * kernelX[1][2];
+            gy += grayImage.at<uchar>(i, j+1) * kernelY[1][2];
+            
+            // Row 3
+            gx += grayImage.at<uchar>(i+1, j-1) * kernelX[2][0];
+            gy += grayImage.at<uchar>(i+1, j-1) * kernelY[2][0];
+            gx += grayImage.at<uchar>(i+1, j) * kernelX[2][1];
+            gy += grayImage.at<uchar>(i+1, j) * kernelY[2][1];
+            gx += grayImage.at<uchar>(i+1, j+1) * kernelX[2][2];
+            gy += grayImage.at<uchar>(i+1, j+1) * kernelY[2][2];
+
+            sobelImage.at<uchar>(i, j) = clamp(std::sqrt(gx * gx + gy * gy));
         }
     }
 }
 
-void applyPrewitt(const cv::Mat grayImage, cv::Mat prewittImage) {
-    int kernelX[3][3] = {
+void applyPrewitt(const cv::Mat& grayImage, cv::Mat& prewittImage) {
+    static const int kernelX[3][3] = {
         {-1, -1, -1},
         {0, 0, 0},
         {1, 1, 1}
     };
 
-    int kernelY[3][3] = {
+    static const int kernelY[3][3] = {
         {-1, 0, 1},
         {-1, 0, 1},
         {-1, 0, 1}
     };
 
-    int i, j, kx, ky;
-    for (i = 1; i < grayImage.rows - 1; i++) {
-        for (j = 1; j < grayImage.cols - 1; j++) {
-            int gx = 0;
-            int gy = 0;
-            for (kx = -1; kx < 2; kx++) {
-                for (ky = -1; ky < 2; ky++) {
-                    gx += grayImage.at<uchar>(i + kx, j + ky) * kernelX[kx + 1][ky + 1];
-                    gy += grayImage.at<uchar>(i + kx, j + ky) * kernelY[kx + 1][ky + 1];
-                }
+    #pragma omp parallel for collapse(2) schedule(dynamic, 16)
+    for (int i = 1; i < grayImage.rows - 1; i++) {
+        for (int j = 1; j < grayImage.cols - 1; j++) {
+            int gx = 0, gy = 0;
+            
+            // Unrolled kernel operations
+            #pragma omp simd reduction(+:gx,gy)
+            for (int k = 0; k < 9; k++) {
+                int kx = k / 3 - 1;
+                int ky = k % 3 - 1;
+                int pixel = grayImage.at<uchar>(i + kx, j + ky);
+                gx += pixel * kernelX[kx + 1][ky + 1];
+                gy += pixel * kernelY[kx + 1][ky + 1];
             }
-            int G = std::sqrt(gx * gx + gy * gy);
-            G = G > 255 ? 255 : G;
-            prewittImage.at<uchar>(i, j) = G;
+
+            prewittImage.at<uchar>(i, j) = clamp(std::sqrt(gx * gx + gy * gy));
         }
     }
 }
 
-void applyLaplacian(const cv::Mat grayImage, cv::Mat laplacianImage) {
-    int kernel[3][3] = {
+void applyLaplacian(const cv::Mat& grayImage, cv::Mat& laplacianImage) {
+    static const int kernel[3][3] = {
         {0, 1, 0},
         {1, -4, 1},
         {0, 1, 0}
     };
 
-    int i, j, kx, ky;
-    for (i = 1; i < grayImage.rows - 1; i++) {
-        for (j = 1; j < grayImage.cols - 1; j++) {
-            int gx = 0;
-            int gy = 0;
-            for (kx = -1; kx < 2; kx++) {
-                for (ky = -1; ky < 2; ky++) {
-                    gx += grayImage.at<uchar>(i + kx, j + ky) * kernel[kx + 1][ky + 1];
-                }
-            }
-            int G = std::abs(gx);
-            G = G > 255 ? 255 : G;
-            laplacianImage.at<uchar>(i, j) = G;
+    #pragma omp parallel for collapse(2) schedule(static)
+    for (int i = 1; i < grayImage.rows - 1; i++) {
+        for (int j = 1; j < grayImage.cols - 1; j++) {
+            int sum = 0;
+            
+            // Direct calculation instead of loops
+            sum = grayImage.at<uchar>(i-1, j) +
+                  grayImage.at<uchar>(i+1, j) +
+                  grayImage.at<uchar>(i, j-1) +
+                  grayImage.at<uchar>(i, j+1) -
+                  4 * grayImage.at<uchar>(i, j);
+
+            laplacianImage.at<uchar>(i, j) = clamp(std::abs(sum));
         }
     }
 }
 
-void applyGaussianBlur(const cv::Mat grayImage, cv::Mat gaussianBlurImage) {
-    int kernel[5][5] = {
+void applyGaussianBlur(const cv::Mat& grayImage, cv::Mat& gaussianBlurImage) {
+    static const int kernel[5][5] = {
         {1, 4, 7, 4, 1},
         {4, 16, 26, 16, 4},
         {7, 26, 41, 26, 7},
         {4, 16, 26, 16, 4},
         {1, 4, 7, 4, 1}
     };
+    static const int kernelSum = 273;
 
-    int i, j, kx, ky;
-    for (i = 2; i < grayImage.rows - 2; i++) {
-        for (j = 2; j < grayImage.cols - 2; j++) {
-            int gx = 0;
-            for (kx = -2; kx < 3; kx++) {
-                for (ky = -2; ky < 3; ky++) {
-                    gx += grayImage.at<uchar>(i + kx, j + ky) * kernel[kx + 2][ky + 2];
-                }
+    #pragma omp parallel for collapse(2) schedule(dynamic, 8)
+    for (int i = 2; i < grayImage.rows - 2; i++) {
+        for (int j = 2; j < grayImage.cols - 2; j++) {
+            int sum = 0;
+            
+            #pragma omp simd reduction(+:sum)
+            for (int k = 0; k < 25; k++) {
+                int kx = k / 5 - 2;
+                int ky = k % 5 - 2;
+                sum += grayImage.at<uchar>(i + kx, j + ky) * kernel[kx + 2][ky + 2];
             }
-            int G = gx / 273;
-            G = G > 255 ? 255 : G;
-            gaussianBlurImage.at<uchar>(i, j) = G;
+
+            gaussianBlurImage.at<uchar>(i, j) = clamp(sum / kernelSum);
         }
     }
 }
 
-void applyCanny(const cv::Mat grayImage, cv::Mat cannyImage) {
-    cv::Canny(grayImage, cannyImage, 50, 150);
-}
-
-void nonMaximumSuppression(const cv::Mat sobelImage, cv::Mat nmsImage) {
-    int i, j;
-    for (i = 1; i < sobelImage.rows; i++) {
-        for (j = 1; j < sobelImage.cols; j++) {
-            for (int x = -1; x <= 1; x++) {
-                for (int y = -1; y <= 1; y++) {
-                    if (sobelImage.at<uchar>(i, j) <= sobelImage.at<uchar>(i+x, j+y)) {
-                        nmsImage.at<uchar>(i, j) = 0;
-                        continue;
-                    } else {
-                        nmsImage.at<uchar>(i, j) = sobelImage.at<uchar>(i, j);
-                        continue;
+void nonMaximumSuppression(const cv::Mat& sobelImage, cv::Mat& nmsImage) {
+    #pragma omp parallel for collapse(2) schedule(dynamic, 16)
+    for (int i = 1; i < sobelImage.rows - 1; i++) {
+        for (int j = 1; j < sobelImage.cols - 1; j++) {
+            bool isMax = true;
+            const uchar centerPixel = sobelImage.at<uchar>(i, j);
+            
+            // Check 8-connected neighborhood
+            for (int x = -1; x <= 1 && isMax; x++) {
+                for (int y = -1; y <= 1 && isMax; y++) {
+                    if (x == 0 && y == 0) continue;
+                    if (centerPixel <= sobelImage.at<uchar>(i+x, j+y)) {
+                        isMax = false;
                     }
                 }
             }
+            
+            nmsImage.at<uchar>(i, j) = isMax ? centerPixel : 0;
         }
     }
 }
 
-void doubleThreshold(const cv::Mat sobelImage, cv::Mat dtImage) {
-    int i, j;
-    for (i = 1; i < sobelImage.rows - 1; i++) {
-        for (j = 1; j < sobelImage.cols - 1; j++) {
-            int G = sobelImage.at<uchar>(i, j);
-            dtImage.at<uchar>(i, j) = G > 130 ? 255 : (G < 65 ? 0 : G);
+void doubleThreshold(const cv::Mat& sobelImage, cv::Mat& dtImage) {
+    static const uchar highThreshold = 130;
+    static const uchar lowThreshold = 65;
+
+    #pragma omp parallel for collapse(2) schedule(static)
+    for (int i = 1; i < sobelImage.rows - 1; i++) {
+        for (int j = 1; j < sobelImage.cols - 1; j++) {
+            const uchar pixel = sobelImage.at<uchar>(i, j);
+            dtImage.at<uchar>(i, j) = pixel > highThreshold ? 255 : (pixel < lowThreshold ? 0 : pixel);
         }
     }
 }
 
-void edgeTracking(const cv::Mat dtImage, cv::Mat etImage) {
-    // Define thresholds for strong and weak edges
-    const uchar lowThreshold = 30;
-    const uchar highThreshold = 60;
+void edgeTracking(const cv::Mat& dtImage, cv::Mat& etImage) {
+    static const uchar lowThreshold = 30;
+    static const uchar highThreshold = 60;
 
     // First pass: mark strong edges
+    #pragma omp parallel for collapse(2) schedule(static)
     for (int i = 1; i < dtImage.rows - 1; i++) {
         for (int j = 1; j < dtImage.cols - 1; j++) {
-            if (dtImage.at<uchar>(i, j) >= highThreshold) {
-                etImage.at<uchar>(i, j) = 255;  // Strong edge
-            }
+            etImage.at<uchar>(i, j) = (dtImage.at<uchar>(i, j) >= highThreshold) ? 255 : 0;
         }
     }
 
-    // Second pass: trace edges
-    for (int i = 1; i < dtImage.rows - 1; i++) {
-        for (int j = 1; j < dtImage.cols - 1; j++) {
-            if (etImage.at<uchar>(i, j) == 255) {
-                // Check 8-connected neighbors
-                for (int x = -1; x <= 1; x++) {
-                    for (int y = -1; y <= 1; y++) {
-                        if (x == 0 && y == 0) continue;  // Skip the center pixel
-                        
-                        uchar neighborPixel = dtImage.at<uchar>(i + x, j + y);
-                        if (neighborPixel >= lowThreshold && neighborPixel < highThreshold) {
-                            etImage.at<uchar>(i + x, j + y) = 255;  // Connect weak edge
+    // Second pass: trace edges (cannot be parallelized due to dependencies)
+    bool changed;
+    do {
+        changed = false;
+        for (int i = 1; i < dtImage.rows - 1; i++) {
+            for (int j = 1; j < dtImage.cols - 1; j++) {
+                if (etImage.at<uchar>(i, j) == 255) {
+                    for (int x = -1; x <= 1; x++) {
+                        for (int y = -1; y <= 1; y++) {
+                            if (x == 0 && y == 0) continue;
+                            
+                            uchar& neighbor = etImage.at<uchar>(i + x, j + y);
+                            uchar neighborOriginal = dtImage.at<uchar>(i + x, j + y);
+                            
+                            if (neighbor != 255 && neighborOriginal >= lowThreshold && 
+                                neighborOriginal < highThreshold) {
+                                neighbor = 255;
+                                changed = true;
+                            }
                         }
                     }
                 }
             }
         }
-    }
-
-    // Set non-edge pixels to 0
-    for (int i = 0; i < etImage.rows; i++) {
-        for (int j = 0; j < etImage.cols; j++) {
-            if (etImage.at<uchar>(i, j) != 255) {
-                etImage.at<uchar>(i, j) = 0;
-            }
-        }
-    }
+    } while (changed);
 }
 
 #endif
