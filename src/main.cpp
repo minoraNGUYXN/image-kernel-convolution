@@ -40,7 +40,7 @@ int main() {
     cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     nonMaximumSuppression(sobelImage, nmsImage);
 
-    // // create a black image with the size of grayImage and apply double threshold
+    // create a black image with the size of grayImage and apply double threshold
     // cv::Mat dtImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // doubleThreshold(nmsImage, dtImage);
     
@@ -48,7 +48,7 @@ int main() {
     // cv::Mat etImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // edgeTracking(nmsImage, etImage);
 
-    // // create a black image with the size of grayImage and apply Sobel filter then double threshold
+    // create a black image with the size of grayImage and apply Sobel filter then double threshold
     // cv::Mat sobelImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applySobel(grayImage, sobelImage);
     // doubleThreshold(sobelImage, sobelImage);

@@ -1,5 +1,5 @@
-#ifndef IMAGE_PROCESSING_H
-#define IMAGE_PROCESSING_H
+#ifndef IMAGE_PROCESSING_UPDATE_H
+#define IMAGE_PROCESSING_UPDATE_H
 
 #include <opencv2/opencv.hpp>
 #include <omp.h>
@@ -152,22 +152,25 @@ void applyStatisticalFilter(const cv::Mat& grayImage, cv::Mat& filteredImage) {
 std::pair<uchar, uchar> geneticThresholdOptimization(const cv::Mat& gradientImage) {
     const int populationSize = 20;
     const int generations = 100;
-    const uchar minThreshold = 50;
-    const uchar maxThreshold = 200;
+    const int minThreshold = 50;
+    const int maxThreshold = 200;
     
     std::vector<std::pair<uchar, uchar>> population(populationSize);
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(minThreshold, maxThreshold);
+    std::uniform_int_distribution<int> dist(minThreshold, maxThreshold);
 
     // Khởi tạo quần thể ban đầu
     for (auto& thresholds : population) {
-        thresholds.first = dist(gen);
-        thresholds.second = dist(gen);
+        thresholds.first = static_cast<uchar>(dist(gen));
+        thresholds.second = static_cast<uchar>(dist(gen));
+        if (thresholds.first > thresholds.second) {
+            std::swap(thresholds.first, thresholds.second);
+        }
     }
 
     // Hàm đánh giá chất lượng (fitness) của ngưỡng
-    auto fitness = [&](uchar low, uchar high) {
+    auto fitness = [&](uchar low, uchar high) -> double {
         int strongEdges = 0, weakEdges = 0;
         for (int i = 0; i < gradientImage.rows; i++) {
             for (int j = 0; j < gradientImage.cols; j++) {
@@ -176,40 +179,47 @@ std::pair<uchar, uchar> geneticThresholdOptimization(const cv::Mat& gradientImag
                 else if (pixel >= low) weakEdges++;
             }
         }
-        return strongEdges + weakEdges * 0.5; // Cân bằng giữa cạnh mạnh và cạnh yếu
+        return strongEdges + weakEdges * 0.5 - (weakEdges * 0.2);
     };
 
     // Thực hiện tiến hóa qua nhiều thế hệ
-    for (int gen = 0; gen < generations; ++gen) {
+    for (int g = 0; g < generations; ++g) {
         // Sắp xếp quần thể theo chất lượng
-        std::sort(population.begin(), population.end(), [&](auto& a, auto& b) {
-            return fitness(a.first, a.second) > fitness(b.first, b.second);
-        });
+        std::sort(population.begin(), population.end(), 
+            [&](const auto& a, const auto& b) {
+                return fitness(a.first, a.second) > fitness(b.first, b.second);
+            });
 
         // Phép lai (crossover)
         for (int i = populationSize / 2; i < populationSize; i++) {
-            uchar parent1_low = population[i - 1].first;
-            uchar parent1_high = population[i - 1].second;
-            uchar parent2_low = population[i - 2].first;
-            uchar parent2_high = population[i - 2].second;
-
-            population[i].first = (parent1_low + parent2_low) / 2;
-            population[i].second = (parent1_high + parent2_high) / 2;
-        }
-
-        // Phép đột biến (mutation)
-        for (int i = 0; i < populationSize; i++) {
-            if (gen % 10 == 0) {
-                population[i].first = dist(gen);
-                population[i].second = dist(gen);
+            int parent1 = i - 1;
+            int parent2 = i - 2;
+            
+            // Crossover
+            population[i].first = static_cast<uchar>((population[parent1].first + 
+                                                    population[parent2].first) / 2);
+            population[i].second = static_cast<uchar>((population[parent1].second + 
+                                                     population[parent2].second) / 2);
+            
+            // Mutation (nhẹ)
+            if (g % 10 == 0) {
+                int mutationAmount = static_cast<int>(dist(gen) * 0.1);
+                if (dist(gen) % 2 == 0) {
+                    population[i].first = std::clamp(population[i].first + mutationAmount, minThreshold, maxThreshold);
+                } else {
+                    population[i].second = std::clamp(population[i].second + mutationAmount, minThreshold, maxThreshold);
+                }
+                
+                // Đảm bảo ngưỡng thấp < ngưỡng cao
+                if (population[i].first > population[i].second) {
+                    std::swap(population[i].first, population[i].second);
+                }
             }
         }
     }
     
-    // Trả về cặp ngưỡng tốt nhất
     return population.front();
 }
-
 // Áp dụng ngưỡng động tối ưu
 void applyDynamicThreshold(const cv::Mat& sobelImage, cv::Mat& dtImage) {
     auto [lowThreshold, highThreshold] = geneticThresholdOptimization(sobelImage);

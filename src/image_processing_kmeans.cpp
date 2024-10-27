@@ -19,7 +19,12 @@ void applyLocalKMeans(const cv::Mat& grayImage, cv::Mat& kmeansImage, int window
             cv::Mat subImage = grayImage(localRegion);
 
             // Chuẩn bị dữ liệu cho K-Means
-            cv::Mat reshapedImage = subImage.reshape(1, subImage.total());
+            cv::Mat reshapedImage;
+            if (subImage.isContinuous()) {
+                reshapedImage = subImage.reshape(1, subImage.total());
+            } else {
+                reshapedImage = subImage.clone().reshape(1, subImage.total());
+            }
             reshapedImage.convertTo(reshapedImage, CV_32F);
 
             // Áp dụng K-Means
@@ -66,7 +71,7 @@ void detectEdgesKMeans(const cv::Mat& kmeansImage, cv::Mat& edgeImage) {
 
 int main() {
     // Đọc ảnh xám
-    cv::Mat grayImage = cv::imread("input.jpg", cv::IMREAD_GRAYSCALE);
+    cv::Mat grayImage = cv::imread("./image/image.jpg", cv::IMREAD_GRAYSCALE);
     if (grayImage.empty()) {
         std::cerr << "Failed to load image!" << std::endl;
         return -1;
@@ -84,11 +89,16 @@ int main() {
     detectEdgesKMeans(kmeansImage, edgeImage);
 
     // Hiển thị và lưu kết quả
-    cv::imshow("Original Image", grayImage);
-    cv::imshow("K-Means Segmentation", kmeansImage);
+    cv::namedWindow("Edge Detection", cv::WINDOW_NORMAL);
+    cv::resizeWindow("Edge Detection", 1600, 800);
     cv::imshow("Edge Detection", edgeImage);
-    cv::imwrite("kmeans_edges.jpg", edgeImage);
-    
+ 
     cv::waitKey(0);
+
+    double itime, ftime, exec_time;
+    itime = omp_get_wtime();
+    ftime = omp_get_wtime();
+    exec_time = ftime - itime;
+    printf("\n\nTime taken is %f", exec_time);
     return 0;
 }
