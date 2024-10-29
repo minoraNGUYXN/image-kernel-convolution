@@ -7,7 +7,7 @@
 int main() {
     omp_set_num_threads(omp_get_max_threads());
     // load the image
-    cv::Mat image = cv::imread("./image/image.jpg");
+    cv::Mat image = cv::imread("C:/Users/haiah/Documents/GitHub/image-kernel-convolution/image/image.jpg");
     if (image.empty()) {
         std::cerr << "There is no such image in the directory" << std::endl;
         return -1;
@@ -61,7 +61,7 @@ int main() {
     std::string window_name = "test display";
 
     // Display the image
-    cv::namedWindow(window_name, cv::WINDOW_NORMAL);
+    cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
     cv::imshow(window_name, nmsImage);
 
     // wait for key press indefinitely
