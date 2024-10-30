@@ -7,7 +7,7 @@
 int main() {
     omp_set_num_threads(omp_get_max_threads());
     // load the image
-    cv::Mat image = cv::imread("C:/Users/haiah/Documents/GitHub/image-kernel-convolution/image/image.jpg");
+    cv::Mat image = cv::imread("/home/haiah/Documents/GitHub/image-kernel-convolution/image/image.jpg");
     if (image.empty()) {
         std::cerr << "There is no such image in the directory" << std::endl;
         return -1;
@@ -25,22 +25,22 @@ int main() {
     itime = omp_get_wtime();
 
     // create a black image with the size of grayImage and apply Gaussian blur
-    cv::Mat blurredImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    applyGaussianBlur(grayImage, blurredImage);
+    // cv::Mat blurredImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    // applyGaussianBlur(grayImage, blurredImage);
 
     // create a black image with the size of grayImage and apply Sobel filter
-    cv::Mat sobelImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    applySobel(blurredImage, sobelImage);
+    // cv::Mat sobelImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    // applySobel(blurredImage, sobelImage);
 
-    // // create a black image with the size of grayImage and apply Canny filter
+    // create a black image with the size of grayImage and apply Canny filter
     // cv::Mat cannyImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applyCanny(blurredImage, cannyImage);
 
     // create a black image with the size of grayImage and apply non-maximum suppression
-    cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
-    nonMaximumSuppression(sobelImage, nmsImage);
+    // cv::Mat nmsImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    // nonMaximumSuppression(sobelImage, nmsImage);
 
-    // // create a black image with the size of grayImage and apply double threshold
+    // create a black image with the size of grayImage and apply double threshold
     // cv::Mat dtImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // doubleThreshold(nmsImage, dtImage);
     
@@ -48,10 +48,15 @@ int main() {
     // cv::Mat etImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // edgeTracking(nmsImage, etImage);
 
-    // // create a black image with the size of grayImage and apply Sobel filter then double threshold
+    // create a black image with the size of grayImage and apply Sobel filter then double threshold
     // cv::Mat sobelImage = cv::Mat::zeros(grayImage.size(), CV_8U);
     // applySobel(grayImage, sobelImage);
     // doubleThreshold(sobelImage, sobelImage);
+
+    // all-in-one edge filtering
+    cv::Mat outputImage = cv::Mat::zeros(grayImage.size(), CV_8U);
+    edgeFilter(grayImage, outputImage);
+
 
     ftime = omp_get_wtime();
     exec_time = ftime - itime;
@@ -62,7 +67,7 @@ int main() {
 
     // Display the image
     cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
-    cv::imshow(window_name, nmsImage);
+    cv::imshow(window_name, outputImage);
 
     // wait for key press indefinitely
     cv::waitKey(0);
