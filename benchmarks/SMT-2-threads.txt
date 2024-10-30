@@ -1,0 +1,55 @@
+railway2048:
+
+    Time taken is 0.443959
+
+    Time taken is 0.452837
+
+    Time taken is 0.449235
+
+    Time taken is 0.448714
+
+    Time taken is 0.447001
+
+
+
+railway1024:
+
+    Time taken is 0.128389
+
+    Time taken is 0.130462
+
+    Time taken is 0.131947
+
+    Time taken is 0.128892
+
+    Time taken is 0.126517
+
+
+
+railway512:
+
+    Time taken is 0.051482
+
+    Time taken is 0.051417
+
+    Time taken is 0.051325
+
+    Time taken is 0.051309
+
+    Time taken is 0.051498
+
+
+
+railway256:
+
+    Time taken is 0.025066
+
+    Time taken is 0.025120
+
+    Time taken is 0.025395
+
+    Time taken is 0.025310
+
+    Time taken is 0.025011
+
+
