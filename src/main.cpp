@@ -66,7 +66,8 @@ int main() {
     std::string window_name = "test display";
 
     // Display the image
-    cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
+    cv::namedWindow(window_name, cv::WINDOW_NORMAL);
+    cv::resizeWindow(window_name, 1024, 1024);
     cv::imshow(window_name, outputImage);
 
     // wait for key press indefinitely
