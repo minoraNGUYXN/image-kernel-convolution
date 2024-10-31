@@ -10,7 +10,8 @@ void applyLaplacian(const cv::Mat grayImage, cv::Mat laplacianImage);
 void applyGaussianBlur(const cv::Mat& grayImage, cv::Mat& gaussianBlurImage);
 void applyCanny(const cv::Mat grayImage, cv::Mat cannyImage);
 void nonMaximumSuppression(const cv::Mat& sobelImage, cv::Mat& nmsImage);
-void doubleThreshold(const cv::Mat sobelImage, cv::Mat dtImage);
+void doubleThreshold(const cv::Mat& sobelImage, cv::Mat& dtImage);
 void edgeTracking(const cv::Mat& dtImage, cv::Mat& etImage);
+void edgeFilter(const cv::Mat& input, cv::Mat& output);
 
 #endif
